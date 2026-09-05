@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-auto-model-assigner"
+description = "Auto-assign & link missing models/LoRAs to your local files in ComfyUI with smart fuzzy matching."
+version = "1.0.0"
+license = { file = "LICENSE" }
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/solokjd-eng/ComfyUI-Auto-Model-Assigner"
+
+[tool.comfy]
+PublisherId = "solokjd-eng"
+DisplayName = "ComfyUI Auto Model Assigner"
+Icon = "⚡"
