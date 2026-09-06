@@ -20,7 +20,7 @@
 
 | 1. 캔버스 빈 공간 마우스 우클릭 | 2. 전체 모델 일괄 스마트 매칭 창 |
 | :---: | :---: |
-| ![캔버스 빈 곳 우클릭](docs/images/01_canvas_menu.png) | ![전체 모델 일괄 매칭 모달](docs/images/02_all_models_modal.png) |
+| ![캔버스 빈 곳 우클릭](docs/images/01_canvas_menu.png) | ![전체 모델 일괄 매칭 모달](docs/images/02_all_models_modal_v2.png) |
 | *메뉴 최하단 `⚡ 전체 모델/LoRA 자동 장착` 클릭* | *모든 누락 노드를 감지하여 100% 매칭 및 유사도 순 추천 제공* |
 
 * **100% 일치 파일**: 파일명은 같으나 하위 경로가 다른 경우(예: `Z-Image\qwen_3_4b.safetensors`, `flux\ae.safetensors`), 즉시 초록색 `100%`로 자동 선택됩니다.
@@ -35,7 +35,7 @@
 
 | 3. 특정 노드 위에서 마우스 우클릭 | 4. 해당 노드 단독 스마트 매칭 창 |
 | :---: | :---: |
-| ![특정 노드 우클릭](docs/images/03_single_node_menu.png) | ![단일 노드 매칭 모달](docs/images/04_single_node_modal.png) |
+| ![특정 노드 우클릭](docs/images/03_single_node_menu.png) | ![단일 노드 매칭 모달](docs/images/04_single_node_modal_v2.png) |
 | *메뉴 최하단 `⚡ 이 노드 모델 자동 장착` 클릭* | *선택한 노드 1개만 단독으로 신속하게 매칭/교체* |
 
 ---
