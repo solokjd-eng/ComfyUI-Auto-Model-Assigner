@@ -26,12 +26,12 @@
 .auto-assign-modal {
     background: #16181f;
     border: 2px solid #3b4252;
-    border-radius: 18px;
-    width: 92vw;
-    max-width: 1380px;
+    border-radius: 16px;
+    width: 94vw;
+    max-width: 1440px;
     min-width: 760px;
-    height: 90vh;
-    max-height: 92vh;
+    height: 94vh;
+    max-height: 95vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 30px rgba(99, 102, 241, 0.25);
@@ -44,12 +44,12 @@
     transform: scale(1);
 }
 
-/* Modal Header - 대형 폰트 */
+/* Modal Header - 컴팩트 & 시원한 타이틀 */
 .auto-assign-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 22px 32px;
+    padding: 12px 24px;
     background: #1e212b;
     border-bottom: 2px solid #2e3440;
 }
@@ -57,15 +57,15 @@
 .auto-assign-title {
     display: flex;
     align-items: center;
-    gap: 14px;
-    font-size: 1.45rem;
+    gap: 10px;
+    font-size: 1.25rem;
     font-weight: 800;
     color: #ffffff;
     letter-spacing: -0.3px;
 }
 
 .auto-assign-title .icon {
-    font-size: 1.7rem;
+    font-size: 1.45rem;
     color: #818cf8;
 }
 
@@ -73,11 +73,11 @@
     background: #272c3a;
     border: 1px solid #3e4758;
     color: #cbd5e1;
-    font-size: 1.6rem;
+    font-size: 1.3rem;
     cursor: pointer;
-    border-radius: 10px;
-    width: 44px;
-    height: 44px;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -91,24 +91,24 @@
     transform: scale(1.05);
 }
 
-/* Modal Summary Bar */
+/* Modal Summary Bar - 높이 축소 */
 .auto-assign-summary {
-    padding: 14px 32px;
+    padding: 8px 24px;
     background: #121318;
     border-bottom: 1px solid #282c37;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     color: #cbd5e1;
     font-weight: 500;
 }
 
 .auto-assign-summary .badge {
-    padding: 5px 12px;
-    border-radius: 8px;
+    padding: 4px 10px;
+    border-radius: 6px;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .auto-assign-summary .badge-info {
@@ -119,23 +119,23 @@
 
 /* Modal Body / Items List */
 .auto-assign-body {
-    padding: 24px 32px;
+    padding: 16px 24px;
     overflow-y: auto;
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 16px;
 }
 
-/* 개별 노드 대형 카드 */
+/* 개별 노드 카드 - 효율적 여백 */
 .auto-assign-item-card {
     background: #1c1f2a;
     border: 2px solid #333a4a;
-    border-radius: 14px;
-    padding: 22px 26px;
+    border-radius: 12px;
+    padding: 14px 18px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
     transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
 }
 
@@ -159,18 +159,18 @@
 .auto-assign-node-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     font-weight: 800;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     color: #ffffff;
 }
 
 .auto-assign-cat-badge {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
-    padding: 4px 10px;
-    border-radius: 6px;
+    padding: 3px 8px;
+    border-radius: 5px;
     background: #3730a3;
     color: #e0e7ff;
     letter-spacing: 0.5px;
@@ -180,53 +180,89 @@
 .auto-assign-orig-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
 }
 
 .auto-assign-orig-file {
-    font-size: 1.08rem;
-    color: #fca5a5;
-    background: rgba(239, 68, 68, 0.12);
-    padding: 12px 18px;
-    border-radius: 10px;
-    border: 1.5px dashed rgba(239, 68, 68, 0.4);
+    font-size: 0.98rem;
+    padding: 8px 14px;
+    border-radius: 8px;
     word-break: break-all;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
+    transition: all 0.2s ease;
+}
+
+.auto-assign-orig-file.missing {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1.5px dashed rgba(239, 68, 68, 0.4);
+}
+
+.auto-assign-orig-file.missing .auto-assign-orig-file-text span {
+    font-weight: 800;
+    color: #f87171;
+    margin-right: 6px;
+    font-size: 1.05rem;
+}
+
+.auto-assign-orig-file.valid {
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.12);
+    border: 1.5px solid rgba(34, 197, 94, 0.35);
+}
+
+.auto-assign-orig-file.valid .auto-assign-orig-file-text span {
+    font-weight: 800;
+    color: #4ade80;
+    margin-right: 6px;
+    font-size: 1.05rem;
 }
 
 .auto-assign-orig-file-text {
     flex: 1;
     font-weight: 600;
-    font-size: 1.1rem;
-    line-height: 1.5;
+    font-size: 1.02rem;
+    line-height: 1.4;
 }
 
-.auto-assign-orig-file-text span {
-    font-weight: 800;
-    color: #f87171;
-    margin-right: 8px;
-    font-size: 1.15rem;
+.auto-assign-status-badge {
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 5px;
+}
+
+.auto-assign-status-badge.ok {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.auto-assign-status-badge.warn {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
 /* Online Search Links - 대형 버튼 */
 .auto-assign-search-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
 .auto-assign-search-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 0.88rem;
     font-weight: 700;
     text-decoration: none;
     color: #e2e8f0;
@@ -274,35 +310,35 @@
     border-color: #fde047;
 }
 
-/* Recommendations - 큼직한 버튼 목록 */
+/* Recommendations - 컴팩트 버튼 목록 */
 .auto-assign-recs-title {
-    font-size: 1.02rem;
+    font-size: 0.94rem;
     font-weight: 700;
     color: #cbd5e1;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .auto-assign-recs-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
 }
 
 .auto-assign-rec-btn {
     background: #2a2f3d;
     border: 1.5px solid #434b5e;
     color: #f1f5f9;
-    padding: 10px 18px;
-    border-radius: 9px;
-    font-size: 1.05rem;
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     transition: all 0.15s;
     text-align: left;
     max-width: 100%;
@@ -319,21 +355,21 @@
     background: #3730a3;
     border-color: #a5b4fc;
     color: #ffffff;
-    box-shadow: 0 0 16px rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.6);
 }
 
 .auto-assign-skip-btn {
     background: #222631;
     border: 1.5px dashed #64748b;
     color: #cbd5e1;
-    padding: 10px 18px;
-    border-radius: 9px;
-    font-size: 1.05rem;
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.15s;
 }
 
@@ -351,9 +387,9 @@
 }
 
 .auto-assign-match-badge {
-    font-size: 0.88rem;
-    padding: 3px 8px;
-    border-radius: 5px;
+    font-size: 0.82rem;
+    padding: 2px 6px;
+    border-radius: 4px;
     font-weight: 800;
 }
 
@@ -372,52 +408,293 @@
     color: #f1f5f9;
 }
 
-/* Select Dropdown - 대형 */
-.auto-assign-select-wrapper {
+/* 🌲 Windows Explorer Style Folder Tree UI (Extremely Spacious) */
+.auto-assign-tree-section {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    background: #12141a;
+    border: 2px solid #323846;
+    border-radius: 10px;
+    padding: 12px 14px;
     margin-top: 4px;
 }
 
-.auto-assign-select-wrapper label {
+.auto-assign-tree-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.auto-assign-tree-title {
     font-size: 0.98rem;
-    font-weight: 600;
-    color: #cbd5e1;
+    font-weight: 700;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.auto-assign-select {
-    background: #111318;
-    border: 2px solid #3d4454;
+.auto-assign-tree-title .icon {
+    font-size: 1.15rem;
+}
+
+.auto-assign-tree-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.auto-assign-tree-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 220px;
+    flex: 1;
+}
+
+.auto-assign-tree-search-wrapper .search-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.auto-assign-tree-search-input {
+    background: #1c202a;
+    border: 1.5px solid #3e4758;
     color: #ffffff;
-    padding: 12px 18px;
-    border-radius: 9px;
-    font-size: 1.1rem;
-    font-weight: 600;
+    padding: 6px 10px 6px 32px;
+    border-radius: 6px;
+    font-size: 0.94rem;
+    font-weight: 500;
     width: 100%;
-    min-height: 50px;
     outline: none;
-    cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: all 0.15s;
 }
 
-.auto-assign-select:focus {
+.auto-assign-tree-search-input:focus {
     border-color: #818cf8;
     box-shadow: 0 0 10px rgba(99, 102, 241, 0.35);
+    background: #232834;
 }
 
-/* Modal Footer */
+.auto-assign-tree-btn {
+    background: #252a36;
+    border: 1.5px solid #434b5c;
+    color: #cbd5e1;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.auto-assign-tree-btn:hover {
+    background: #363d4e;
+    color: #ffffff;
+    border-color: #818cf8;
+}
+
+/* Scrollable Tree Container - 크게 확장 (480px) */
+.auto-assign-tree-container {
+    background: #171a22;
+    border: 1.5px solid #2d3340;
+    border-radius: 8px;
+    padding: 8px 12px;
+    max-height: 480px;
+    min-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    user-select: none;
+}
+
+.auto-assign-tree-container::-webkit-scrollbar {
+    width: 10px;
+}
+.auto-assign-tree-container::-webkit-scrollbar-track {
+    background: #12141a;
+    border-radius: 5px;
+}
+.auto-assign-tree-container::-webkit-scrollbar-thumb {
+    background: #3b4252;
+    border-radius: 5px;
+    border: 2px solid #12141a;
+}
+.auto-assign-tree-container::-webkit-scrollbar-thumb:hover {
+    background: #6366f1;
+}
+
+/* Tree Folder Row */
+.tree-folder-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: #93c5fd;
+    transition: background 0.12s, color 0.12s;
+}
+
+.tree-folder-row:hover {
+    background: #242b3b;
+    color: #bfdbfe;
+}
+
+.tree-arrow {
+    display: inline-block;
+    width: 18px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #818cf8;
+    transition: transform 0.15s ease;
+}
+
+.tree-folder-row.expanded .tree-arrow {
+    transform: rotate(90deg);
+}
+
+.tree-folder-icon {
+    font-size: 1.15rem;
+}
+
+.tree-folder-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-count-badge {
+    font-size: 0.78rem;
+    background: #282f3e;
+    color: #94a3b8;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-weight: 600;
+}
+
+/* Tree Folder Subtree */
+.tree-folder-content {
+    display: none;
+    padding-left: 20px;
+    border-left: 2px dashed #2f3747;
+    margin-left: 12px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.tree-folder-content.expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Tree File Row */
+.tree-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.0rem;
+    font-weight: 500;
+    color: #e2e8f0;
+    border: 1.5px solid transparent;
+    transition: all 0.12s;
+    word-break: break-all;
+}
+
+.tree-file-row:hover {
+    background: #262c3b;
+    color: #ffffff;
+    border-color: #4b5563;
+}
+
+.tree-file-row.selected {
+    background: #3730a3;
+    border-color: #818cf8;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.55);
+}
+
+.tree-file-icon {
+    font-size: 1.05rem;
+    color: #a5b4fc;
+}
+
+.tree-file-row.selected .tree-file-icon {
+    color: #38bdf8;
+}
+
+.tree-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-file-badge {
+    font-size: 0.78rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: #1e293b;
+    color: #94a3b8;
+    font-family: monospace;
+}
+
+/* Final Selected Bar */
+.auto-assign-selected-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #181c25;
+    border-radius: 6px;
+    border: 1px solid #374151;
+    font-size: 0.95rem;
+}
+
+.auto-assign-selected-bar .selected-label {
+    font-weight: 700;
+    color: #a5b4fc;
+    white-space: nowrap;
+}
+
+.auto-assign-selected-bar .selected-value-display {
+    font-weight: 700;
+    color: #38bdf8;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 1.0rem;
+}
+
+/* Modal Footer - 컴팩트 높이 */
 .auto-assign-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 32px;
+    padding: 10px 24px;
     background: #1e212b;
     border-top: 2px solid #2e3440;
 }
 
 .auto-assign-footer-left {
-    font-size: 1.02rem;
+    font-size: 0.94rem;
     color: #94a3b8;
     font-weight: 500;
 }
@@ -425,13 +702,13 @@
 .auto-assign-footer-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .auto-assign-btn {
-    padding: 13px 26px;
-    border-radius: 10px;
-    font-size: 1.15rem;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 1.05rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s;

@@ -4,7 +4,7 @@
 
 [![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom--Node-purple.svg)](https://github.com/comfyanonymous/ComfyUI)
-[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](https://github.com/solokjd-eng/ComfyUI-Auto-Model-Assigner)
+[![Version](https://img.shields.io/badge/version-1.1.0-brightgreen.svg)](https://github.com/solokjd-eng/ComfyUI-Auto-Model-Assigner)
 
 ---
 
@@ -42,15 +42,20 @@
 
 ## ✨ 주요 특징 (Key Features)
 
-1. 🧠 **지능형 퍼지 매칭 엔진 (Smart Fuzzy Matcher)**
+1. 🌲 **윈도우 탐색기 스타일 대형 폴더 트리 (Folder Tree Explorer)**
+   - 각 모델 폴더의 하위 계층 구조를 윈도우 탐색기처럼 펼치고 접으며 시원하게 탐색할 수 있습니다.
+   - 모달을 열면 현재 선택/장착된 모델 파일이 있는 폴더가 자동으로 펼쳐지고 파일이 화면 중앙에 즉시 하이라이트됩니다.
+2. 🧩 **서드파티 멀티 모델 / LoRA 노드 완벽 지원 (Universal Slot Adapter)**
+   - `Power Lora Loader (rgthree)`, `DaSiWa LoRA Loader (JSON Stack)`, `Deno Multi LoRA Loader`, `Comfyroll`, `Efficiency Nodes` 등 객체형/배열형 멀티 모델 노드도 슬롯별로 개별 분리 감지하여 완벽하게 장착합니다.
+3. 🧠 **지능형 퍼지 매칭 엔진 (Smart Fuzzy Matcher)**
    - 대소문자, 정밀도(`fp8`, `bf16`, `fp16`), 버전(`v1`, `v2`, `turbo`), 언더바/하이픈을 정규화하여 내 PC에서 가장 적합한 모델을 유사도(%) 순으로 정렬하여 추천합니다.
-2. 🌐 **AI 모델 전용 원클릭 스마트 검색 (Google / HuggingFace / Civitai)**
+4. 🌐 **AI 모델 전용 원클릭 스마트 검색 (Google / HuggingFace / Civitai)**
    - 파일명의 군더더기(확장자, 특수문자, 폴더명)를 깔끔하게 분리·정제하여 검색창을 열어주므로 구글/허깅페이스/Civitai에서 100% 정확한 다운로드 페이지가 뜹니다.
-3. 👁️ **시니어 & 대화면 맞춤형 대형 UI (Full-Width High Visibility)**
-   - 브라우저를 억지로 확대할 필요 없이 화면을 시원하게 꽉 채우는 가로 `92vw` 대형 팝업과 큼직하고 선명한 글자/버튼을 제공합니다.
-4. 🛡️ **빨간색 에러 테두리 자동 제거**
-   - 모델을 장착하는 즉시 노드 주변의 빨간 에러 테두리를 말끔히 지우고 캔버스를 정상 상태로 리프레시합니다.
-5. 📌 **우클릭 메뉴 최하단 고정**
+5. 👁️ **시니어 & 대화면 맞춤형 대형 가시성 UI (Full-Width High Visibility)**
+   - 브라우저를 억지로 확대할 필요 없이 화면을 시원하게 꽉 채우는 가로 `94vw` 대형 팝업과 최대 480px 높이의 대형 폴더 트리를 제공합니다.
+6. 🛡️ **빨간색 에러 테두리 자동 제거 & 언제든 재확인 가능**
+   - 모델을 장착하는 즉시 노드 주변의 빨간 에러 테두리를 말끔히 지우고 캔버스를 정상 상태로 리프레시하며, 이미 장착된 모델도 언제든 다시 열어 모델을 교체할 수 있습니다.
+7. 📌 **우클릭 메뉴 최하단 고정**
    - 다른 확장 프로그램이 많이 설치되어 있어도 항상 컨텍스트 메뉴의 가장 맨 아래에 깔끔하게 고정됩니다.
 
 ---

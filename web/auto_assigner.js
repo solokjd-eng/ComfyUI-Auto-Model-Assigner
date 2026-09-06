@@ -39,18 +39,38 @@ class AutoModelAssigner {
      * 해당 노드가 모델/LoRA 관련 노드인지 확인
      */
     static isModelNode(node) {
-        if (!node || !node.widgets) return false;
-        return node.widgets.some(w => this.isModelWidget(w, node));
+        if (!node) return false;
+        const nodeType = (node.type || "").toLowerCase();
+        if (
+            nodeType.includes("lora") ||
+            nodeType.includes("checkpoint") ||
+            nodeType.includes("unet") ||
+            nodeType.includes("diffusion") ||
+            nodeType.includes("vae") ||
+            nodeType.includes("clip") ||
+            nodeType.includes("controlnet") ||
+            nodeType.includes("upscale") ||
+            nodeType.includes("dasiwa") ||
+            nodeType.includes("deno") ||
+            nodeType.includes("rgthree")
+        ) {
+            return true;
+        }
+        if (node.widgets && node.widgets.length > 0) {
+            return node.widgets.some(w => this.isModelWidget(w, node));
+        }
+        return false;
     }
 
     /**
      * 해당 위젯이 모델/LoRA 선택 위젯인지 판별
      */
     static isModelWidget(widget, node) {
-        if (!widget || widget.type !== "combo") return false;
+        if (!widget) return false;
         const name = (widget.name || "").toLowerCase();
+        const val = typeof widget.value === "string" ? widget.value.toLowerCase() : "";
         
-        // 이름 패턴 검사
+        // 1. 이름 패턴 검사 (lora, ckpt, unet, lora_1, model 등)
         if (
             name.includes("ckpt") ||
             name.includes("unet") ||
@@ -60,12 +80,25 @@ class AutoModelAssigner {
             name.includes("control_net") ||
             name.includes("model_name") ||
             name.includes("upscale_model") ||
-            name === "model"
+            name === "model" ||
+            name.startsWith("lora_") ||
+            name.startsWith("model_")
         ) {
             return true;
         }
 
-        // 위젯 options.values에 safetensors, ckpt 등이 포함되어 있는지 검사
+        // 2. 값 패턴 검사 (.safetensors, .ckpt 등)
+        if (
+            val.endsWith(".safetensors") ||
+            val.endsWith(".ckpt") ||
+            val.endsWith(".pt") ||
+            val.endsWith(".bin") ||
+            val.endsWith(".pth")
+        ) {
+            return true;
+        }
+
+        // 3. 위젯 options.values 검사
         if (widget.options && Array.isArray(widget.options.values)) {
             const hasModelFiles = widget.options.values.some(v => 
                 typeof v === "string" && (
@@ -85,18 +118,169 @@ class AutoModelAssigner {
     /**
      * 위젯 및 노드 유형으로부터 모델 카테고리 추론
      */
-    static detectCategory(widget, node) {
-        const wName = (widget.name || "").toLowerCase();
-        const nType = (node.type || "").toLowerCase();
+    static detectCategory(widgetOrName, node) {
+        const wName = typeof widgetOrName === "string" ? widgetOrName.toLowerCase() : ((widgetOrName?.name || "").toLowerCase());
+        const nType = (node?.type || "").toLowerCase();
 
         if (wName.includes("ckpt") || nType.includes("checkpoint")) return "checkpoints";
         if (wName.includes("unet") || nType.includes("unet") || nType.includes("diffusion")) return "diffusion_models";
-        if (wName.includes("lora") || nType.includes("lora")) return "loras";
+        if (wName.includes("lora") || nType.includes("lora") || nType.includes("dasiwa") || nType.includes("deno") || nType.includes("rgthree")) return "loras";
         if (wName.includes("vae") || nType.includes("vae")) return "vae";
         if (wName.includes("clip") || nType.includes("clip") || nType.includes("text_encoder")) return "clip";
         if (wName.includes("control_net") || nType.includes("controlnet")) return "controlnet";
         if (wName.includes("upscale") || nType.includes("upscale")) return "upscale_models";
         return "checkpoints";
+    }
+
+    /**
+     * 노드에서 모든 모델 슬롯을 범용적으로 추출
+     * (기본 노드 + rgthree Power Lora Loader + DaSiWa LoRA Loader + Deno Multi LoRA + CR LoRA Stack 등 서드파티 완벽 지원)
+     */
+    static extractModelSlots(node, localModels) {
+        if (!node) return [];
+        const slots = [];
+        const nodeType = (node.type || "").toLowerCase();
+
+        // ----------------------------------------------------
+        // 1. rgthree Power Lora Loader 특화 처리
+        // ----------------------------------------------------
+        if (nodeType.includes("power lora") || (node.widgets && node.widgets.some(w => w.value && typeof w.value === "object" && "lora" in w.value))) {
+            if (node.widgets) {
+                let slotIdx = 1;
+                node.widgets.forEach(w => {
+                    if (w.value && typeof w.value === "object" && typeof w.value.lora === "string") {
+                        const loraPath = w.value.lora;
+                        // None 또는 빈값 제외
+                        if (!loraPath || loraPath === "None" || loraPath === "__none__" || loraPath.trim() === "") return;
+
+                        const category = "loras";
+                        const availableList = (localModels && localModels[category]) || [];
+
+                        slots.push({
+                            node,
+                            slotType: "rgthree",
+                            slotKey: `rgthree_${slotIdx}`,
+                            slotLabel: `LoRA Slot #${slotIdx}`,
+                            category,
+                            currentValue: loraPath,
+                            availableList,
+                            applyValue: (newVal) => {
+                                w.value.lora = newVal;
+                                if (w.callback) w.callback(w.value, app.canvas, node, app.canvas.graph_mouse, {});
+                                node.setDirtyCanvas?.(true, true);
+                            }
+                        });
+                        slotIdx++;
+                    }
+                });
+            }
+        }
+
+        // ----------------------------------------------------
+        // 2. DaSiWa LoRA Loader / JSON Stack 특화 처리
+        // ----------------------------------------------------
+        if (nodeType.includes("dasiwa") || (node.widgets && node.widgets.some(w => w.name === "stack_data" || (typeof w.value === "string" && w.value.startsWith("[") && w.value.includes('"lora"'))))) {
+            const stackWidget = node.widgets && node.widgets.find(w => w.name === "stack_data" || (typeof w.value === "string" && w.value.startsWith("[") && w.value.includes('"lora"')));
+            const rawStackStr = stackWidget?.value || node.properties?.stack_data;
+            if (rawStackStr) {
+                try {
+                    const stackData = typeof rawStackStr === "string" ? JSON.parse(rawStackStr) : rawStackStr;
+                    if (Array.isArray(stackData)) {
+                        stackData.forEach((item, idx) => {
+                            if (item && typeof item === "object") {
+                                const loraPath = item.lora || "";
+                                // 설정된 LoRA가 있거나 슬롯이 활성화된 경우
+                                if (loraPath && loraPath !== "None" && loraPath !== "__none__" && loraPath.trim() !== "") {
+                                    const category = "loras";
+                                    const availableList = (localModels && localModels[category]) || [];
+
+                                    slots.push({
+                                        node,
+                                        slotType: "dasiwa_json",
+                                        slotKey: `dasiwa_stack_${idx}`,
+                                        slotLabel: `LoRA Slot #${idx + 1}`,
+                                        category,
+                                        currentValue: loraPath,
+                                        availableList,
+                                        applyValue: (newVal) => {
+                                            try {
+                                                const currentStr = stackWidget?.value || node.properties?.stack_data || "[]";
+                                                const currentArr = typeof currentStr === "string" ? JSON.parse(currentStr) : currentStr;
+                                                if (currentArr && currentArr[idx]) {
+                                                    currentArr[idx].lora = newVal;
+                                                    const updatedStr = JSON.stringify(currentArr);
+                                                    if (stackWidget) stackWidget.value = updatedStr;
+                                                    if (node.properties) node.properties.stack_data = updatedStr;
+                                                    if (stackWidget?.callback) stackWidget.callback(updatedStr, app.canvas, node, app.canvas.graph_mouse, {});
+                                                    node.setDirtyCanvas?.(true, true);
+                                                }
+                                            } catch (err) {
+                                                console.error("[AutoModelAssigner] Failed to update DaSiWa stack:", err);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.warn("[AutoModelAssigner] Error parsing DaSiWa stack_data:", e);
+                }
+            }
+        }
+
+        // ----------------------------------------------------
+        // 3. 표준 위젯 및 Deno Multi-LoRA, 일반 Combo/Text 위젯 처리
+        // ----------------------------------------------------
+        if (node.widgets) {
+            node.widgets.forEach((widget, idx) => {
+                // 이미 rgthree나 dasiwa로 처리된 위젯은 중복 방지
+                if (widget.name === "stack_data" || (widget.value && typeof widget.value === "object" && "lora" in widget.value)) {
+                    return;
+                }
+
+                if (!this.isModelWidget(widget, node)) return;
+
+                const currentValue = typeof widget.value === "string" ? widget.value : "";
+                // 빈 슬롯(__none__, None 등)은 건너뛰기
+                if (!currentValue || currentValue === "__none__" || currentValue === "None" || currentValue.trim() === "") {
+                    return;
+                }
+
+                const category = this.detectCategory(widget, node);
+                let availableList = (localModels && localModels[category]) || 
+                                    (widget.options && Array.isArray(widget.options.values) ? widget.options.values : []);
+                availableList = availableList.filter(f => typeof f === "string" && f.trim() !== "" && f !== "__none__" && f !== "None");
+
+                if (availableList.length === 0) return;
+
+                const slotName = widget.name || `slot_${idx + 1}`;
+
+                slots.push({
+                    node,
+                    widget,
+                    slotType: "standard_widget",
+                    slotKey: `widget_${slotName}_${idx}`,
+                    slotLabel: slotName,
+                    category,
+                    currentValue: currentValue,
+                    availableList,
+                    applyValue: (newVal) => {
+                        const oldValue = widget.value;
+                        widget.value = newVal;
+                        if (widget.callback) {
+                            widget.callback(newVal, app.canvas, node, app.canvas.graph_mouse, {});
+                        }
+                        if (node.onWidgetChanged) {
+                            node.onWidgetChanged(widget.name, newVal, oldValue, widget);
+                        }
+                        node.setDirtyCanvas?.(true, true);
+                    }
+                });
+            });
+        }
+
+        return slots;
     }
 
     /**
@@ -261,7 +445,7 @@ class AutoModelAssigner {
      * 자동 장착 메인 실행 함수 (targetNode가 null이면 전체 워크플로우 대상)
      */
     static async runAutoAssign(targetNode = null) {
-        this.showToast("🔍 모델 및 LoRA 분석 중...", "info");
+        this.showToast("🔍 모델 및 LoRA 슬롯 분석 중...", "info");
 
         // 1. 로컬 모델 목록 로드
         let localModels = await this.fetchLocalModels();
@@ -274,98 +458,223 @@ class AutoModelAssigner {
         const itemsToResolve = [];
         let totalChecked = 0;
         let alreadyMatchedCount = 0;
+        let missingCount = 0;
 
         for (const node of nodesToScan) {
-            if (!node.widgets) continue;
+            const slots = this.extractModelSlots(node, localModels);
+            totalChecked += slots.length;
 
-            for (const widget of node.widgets) {
-                if (!this.isModelWidget(widget, node)) continue;
-                totalChecked++;
+            for (const slot of slots) {
+                const availableList = slot.availableList;
+                if (!availableList || availableList.length === 0) continue;
 
-                const category = this.detectCategory(widget, node);
-                const currentValue = widget.value;
+                const currentValue = slot.currentValue;
+                const isAlreadyValid = availableList.includes(currentValue);
 
-                // 로컬 모델 후보군 획득 (API 결과 또는 위젯 옵션)
-                let availableList = (localModels && localModels[category]) || 
-                                    (widget.options && Array.isArray(widget.options.values) ? widget.options.values : []);
-
-                // 빈 문자열 및 None 필터링
-                availableList = availableList.filter(f => typeof f === "string" && f.trim() !== "");
-
-                if (availableList.length === 0) continue;
-
-                // 이미 로컬에 정확히 존재하는 경우
-                if (availableList.includes(currentValue)) {
+                if (isAlreadyValid) {
                     alreadyMatchedCount++;
-                    // 이미 정상이더라도 남아있던 에러 플래그 정리
+                    // 정상이면 에러 플래그 정리
                     node.has_errors = false;
                     delete node.boxcolor;
-                    continue;
+
+                    // 현재 모델 + 다른 대체 추천 목록 구성
+                    const otherCands = availableList.filter(c => c !== currentValue);
+                    const otherScored = otherCands.map(cand => ({
+                        file: cand,
+                        score: this.calculateSimilarity(currentValue, cand),
+                        isCurrent: false
+                    })).sort((a, b) => b.score - a.score);
+
+                    const recommendations = [
+                        { file: currentValue, score: 100, isCurrent: true },
+                        ...otherScored.slice(0, 3)
+                    ];
+
+                    itemsToResolve.push({
+                        ...slot,
+                        isAlreadyValid: true,
+                        recommendations,
+                        selectedMatch: currentValue,
+                        topScore: 100,
+                        isPerfectMatch: true
+                    });
+                } else {
+                    missingCount++;
+
+                    // 유사도 매칭 수행
+                    const scoredList = availableList.map(cand => ({
+                        file: cand,
+                        score: this.calculateSimilarity(currentValue, cand),
+                        isCurrent: false
+                    })).sort((a, b) => b.score - a.score);
+
+                    const topMatch = scoredList[0];
+
+                    itemsToResolve.push({
+                        ...slot,
+                        isAlreadyValid: false,
+                        recommendations: scoredList.slice(0, 4),
+                        selectedMatch: topMatch ? topMatch.file : (availableList[0] || ""),
+                        topScore: topMatch ? topMatch.score : 0,
+                        isPerfectMatch: topMatch && topMatch.score === 100
+                    });
                 }
-
-                // 유사도 매칭 수행
-                const scoredList = availableList.map(cand => ({
-                    file: cand,
-                    score: this.calculateSimilarity(currentValue, cand)
-                })).sort((a, b) => b.score - a.score);
-
-                const topMatch = scoredList[0];
-
-                itemsToResolve.push({
-                    node,
-                    widget,
-                    category,
-                    currentValue: currentValue || "(설정 안됨)",
-                    availableList,
-                    recommendations: scoredList.slice(0, 4),
-                    selectedMatch: topMatch ? topMatch.file : (availableList[0] || ""),
-                    topScore: topMatch ? topMatch.score : 0,
-                    isPerfectMatch: topMatch && topMatch.score === 100
-                });
             }
         }
 
-        if (totalChecked === 0) {
-            this.showToast("캔버스에 모델 또는 LoRA 노드가 없습니다.", "warning");
+        if (totalChecked === 0 || itemsToResolve.length === 0) {
+            this.showToast("캔버스에 감지 가능한 모델 또는 LoRA 슬롯이 없습니다.", "warning");
             return;
         }
 
-        if (itemsToResolve.length === 0) {
-            this.clearNodeErrorsAndRefresh(nodesToScan);
-            this.showToast(`✨ 모든 모델(${alreadyMatchedCount}개)이 이미 로컬 파일과 정확히 연결되어 있습니다!`, "success");
-            return;
-        }
+        // 항상 모달 창을 띄워 사용자에게 모델 확인 및 재장착 제어권을 제공합니다.
+        this.showResolverModal(itemsToResolve, alreadyMatchedCount, missingCount);
+    }
 
-        // 모든 미결 항목이 100% 매칭(파일명 동일, 경로만 다름 등)인 경우 -> 즉시 자동 적용!
-        const allPerfect = itemsToResolve.every(item => item.isPerfectMatch);
-        if (allPerfect) {
-            let count = 0;
-            const modifiedNodes = [];
-            for (const item of itemsToResolve) {
-                const oldValue = item.widget.value;
-                item.widget.value = item.selectedMatch;
-                if (item.widget.callback) {
-                    item.widget.callback(item.selectedMatch, app.canvas, item.node, app.canvas.graph_mouse, {});
+    /**
+     * 모델 파일 목록(상대 경로 배열)을 계층적 트리 객체로 변환
+     */
+    static buildTreeStructure(fileList) {
+        const root = {
+            name: "root",
+            type: "folder",
+            path: "",
+            children: {},
+            files: [],
+            totalCount: 0
+        };
+
+        for (const fullPath of fileList) {
+            if (!fullPath || typeof fullPath !== "string") continue;
+            const normalized = fullPath.replace(/\\/g, "/");
+            const parts = normalized.split("/");
+            const fileName = parts.pop();
+
+            let currentFolder = root;
+            let currentPathAcc = "";
+
+            for (const folderName of parts) {
+                currentPathAcc = currentPathAcc ? `${currentPathAcc}/${folderName}` : folderName;
+                if (!currentFolder.children[folderName]) {
+                    currentFolder.children[folderName] = {
+                        name: folderName,
+                        type: "folder",
+                        path: currentPathAcc,
+                        children: {},
+                        files: [],
+                        totalCount: 0
+                    };
                 }
-                if (item.node.onWidgetChanged) {
-                    item.node.onWidgetChanged(item.widget.name, item.selectedMatch, oldValue, item.widget);
-                }
-                modifiedNodes.push(item.node);
-                count++;
+                currentFolder = currentFolder.children[folderName];
             }
-            this.clearNodeErrorsAndRefresh(modifiedNodes);
-            this.showToast(`🎉 ${count}개 모델이 100% 자동 매칭되어 즉시 장착되었습니다!`, "success");
-            return;
+
+            currentFolder.files.push({
+                name: fileName,
+                fullPath: fullPath,
+                type: "file"
+            });
         }
 
-        // 확인 및 사용자 선택이 필요한 경우 모달 다이얼로그 표시
-        this.showResolverModal(itemsToResolve, alreadyMatchedCount);
+        // 각 폴더 하위의 총 파일 개수 재귀 계산
+        const calcCount = (folder) => {
+            let count = folder.files.length;
+            for (const childName in folder.children) {
+                count += calcCount(folder.children[childName]);
+            }
+            folder.totalCount = count;
+            return count;
+        };
+        calcCount(root);
+
+        return root;
+    }
+
+    /**
+     * 폴더 트리 DOM 노드 재귀 생성 (Windows 탐색기 스타일)
+     */
+    static renderTreeDOM(folderNode, selectedFile, onSelectFile, depth = 0) {
+        const fragment = document.createDocumentFragment();
+
+        // 1. 하위 폴더들 렌더링 (알파벳/가나다 순)
+        const sortedFolders = Object.values(folderNode.children).sort((a, b) => a.name.localeCompare(b.name));
+        for (const childFolder of sortedFolders) {
+            const folderWrapper = document.createElement("div");
+            folderWrapper.className = "tree-folder-wrapper";
+
+            const folderRow = document.createElement("div");
+            folderRow.className = "tree-folder-row";
+            folderRow.innerHTML = `
+                <span class="tree-arrow">▶</span>
+                <span class="tree-folder-icon">📁</span>
+                <span class="tree-folder-name" title="${escapeHtml(childFolder.path)}">${escapeHtml(childFolder.name)}</span>
+                <span class="tree-count-badge">${childFolder.totalCount}</span>
+            `;
+
+            const folderContent = document.createElement("div");
+            folderContent.className = "tree-folder-content";
+
+            // 폴더 내부 자식들 재귀 생성
+            const subContent = this.renderTreeDOM(childFolder, selectedFile, onSelectFile, depth + 1);
+            folderContent.appendChild(subContent);
+
+            // 선택된 파일이 이 폴더 하위에 위치하는지 확인 -> 기본 자동 펼침
+            const normalizedSelected = selectedFile ? selectedFile.replace(/\\/g, "/").toLowerCase() : "";
+            const isSelectedInside = normalizedSelected.startsWith(childFolder.path.toLowerCase() + "/");
+            if (isSelectedInside) {
+                folderRow.classList.add("expanded");
+                folderContent.classList.add("expanded");
+                folderRow.querySelector(".tree-folder-icon").textContent = "📂";
+            }
+
+            // 폴더 클릭 시 토글 이벤트
+            folderRow.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const isExpanded = folderRow.classList.toggle("expanded");
+                folderContent.classList.toggle("expanded", isExpanded);
+                folderRow.querySelector(".tree-folder-icon").textContent = isExpanded ? "📂" : "📁";
+            });
+
+            folderWrapper.appendChild(folderRow);
+            folderWrapper.appendChild(folderContent);
+            fragment.appendChild(folderWrapper);
+        }
+
+        // 2. 현재 폴더 직속 파일들 렌더링 (알파벳/가나다 순)
+        const sortedFiles = folderNode.files.slice().sort((a, b) => a.name.localeCompare(b.name));
+        for (const file of sortedFiles) {
+            const fileRow = document.createElement("div");
+            const normalizedFile = file.fullPath.replace(/\\/g, "/").toLowerCase();
+            const normalizedSelected = selectedFile ? selectedFile.replace(/\\/g, "/").toLowerCase() : "";
+            const isSelected = normalizedFile === normalizedSelected;
+
+            fileRow.className = `tree-file-row ${isSelected ? 'selected' : ''}`;
+            fileRow.dataset.file = file.fullPath;
+            fileRow.dataset.search = file.fullPath.toLowerCase();
+
+            const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+            const ext = extMatch ? extMatch[1] : "";
+
+            fileRow.innerHTML = `
+                <span class="tree-file-icon">📄</span>
+                <span class="tree-file-name" title="${escapeHtml(file.fullPath)}">${escapeHtml(file.name)}</span>
+                ${ext ? `<span class="tree-file-badge">${ext}</span>` : ''}
+            `;
+
+            fileRow.addEventListener("click", (e) => {
+                e.stopPropagation();
+                onSelectFile(file.fullPath);
+            });
+
+            fragment.appendChild(fileRow);
+        }
+
+        return fragment;
     }
 
     /**
      * 스마트 모델 매핑 모달 UI 렌더링
      */
-    static showResolverModal(items, alreadyMatchedCount) {
+    static showResolverModal(items, alreadyMatchedCount, missingCount = 0) {
         // 기존 열린 모달 제거
         const existing = document.querySelector(".auto-assign-overlay");
         if (existing) existing.remove();
@@ -382,7 +691,7 @@ class AutoModelAssigner {
         header.innerHTML = `
             <div class="auto-assign-title">
                 <span class="icon">⚡</span>
-                <span>모델 / LoRA 스마트 자동 장착</span>
+                <span>모델 / LoRA 스마트 자동 장착 &amp; 폴더 탐색기</span>
             </div>
             <button class="auto-assign-close-btn" title="닫기">✕</button>
         `;
@@ -391,9 +700,20 @@ class AutoModelAssigner {
         // 2. 요약 바
         const summary = document.createElement("div");
         summary.className = "auto-assign-summary";
+        
+        let summaryBadgeHtml = "";
+        let summaryText = "";
+        if (missingCount > 0) {
+            summaryText = "누락된 모델을 내 PC 폴더 탐색기로 확인 및 장착하거나, 원하는 모델로 즉시 변경할 수 있습니다.";
+            summaryBadgeHtml = `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ ${missingCount}개 누락됨 / 총 ${items.length}개 노드</span>`;
+        } else {
+            summaryText = "모든 모델이 정상 장착되어 있습니다. 폴더 트리에서 모델을 확인하거나 다른 모델로 교체할 수 있습니다.";
+            summaryBadgeHtml = `<span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4);">✅ 전체 ${items.length}개 정상 장착됨</span>`;
+        }
+
         summary.innerHTML = `
-            <span>워크플로우 원본 모델을 내 PC 보유 모델로 매칭하거나 웹에서 검색할 수 있습니다.</span>
-            <span class="badge badge-info">${items.length}개 노드 확인 필요</span>
+            <span>${summaryText}</span>
+            ${summaryBadgeHtml}
         `;
 
         // 3. 바디 리스트
@@ -418,9 +738,10 @@ class AutoModelAssigner {
                 recsListHtml = item.recommendations.map(r => {
                     const badgeClass = r.score >= 80 ? "high" : (r.score >= 40 ? "medium" : "low");
                     const isSelected = r.file === item.selectedMatch;
+                    const labelText = r.isCurrent ? "현재장착" : `${r.score}%`;
                     return `
                         <button type="button" class="auto-assign-rec-btn ${isSelected ? 'selected' : ''}" data-file="${escapeHtml(r.file)}">
-                            <span class="auto-assign-match-badge ${badgeClass}">${r.score}%</span>
+                            <span class="auto-assign-match-badge ${badgeClass}">${labelText}</span>
                             <span>${escapeHtml(r.file)}</span>
                         </button>
                     `;
@@ -435,25 +756,25 @@ class AutoModelAssigner {
                 </button>
             `;
 
-            // 전체 드롭다운 옵션 렌더링 (첫 번째에 '건너뛰기' 옵션 제공)
-            let optionsHtml = `<option value="${SKIP_VALUE}" ${isSkipSelected ? "selected" : ""}>⏭️ [건너뛰기] 변경하지 않고 원본 유지</option>`;
-            optionsHtml += item.availableList.map(f => {
-                const isSelected = f === item.selectedMatch;
-                return `<option value="${escapeHtml(f)}" ${isSelected ? "selected" : ""}>${escapeHtml(f)}</option>`;
-            }).join("");
+            const origLabel = item.isAlreadyValid ? "✅ 현재 장착됨:" : "❌ 누락된 원본:";
+            const origClass = item.isAlreadyValid ? "valid" : "missing";
+            const statusBadgeText = item.isAlreadyValid ? "✅ 정상 장착" : "⚠️ 누락됨";
+            const statusBadgeClass = item.isAlreadyValid ? "ok" : "warn";
+            const recsTitleText = item.isAlreadyValid ? "💡 빠른 추천 후보 (유사도순):" : "💡 추천 후보 (유사도순):";
 
             card.innerHTML = `
                 <div class="auto-assign-item-header">
                     <div class="auto-assign-node-info">
-                        <span>#${item.node.id} ${escapeHtml(nodeTitle)}</span>
+                        <span>#${item.node.id} ${escapeHtml(nodeTitle)} <span style="color: #a5b4fc; font-size: 0.95rem; font-weight: 600; margin-left: 6px;">[${escapeHtml(item.slotLabel || "Model")}]</span></span>
                         <span class="auto-assign-cat-badge">${escapeHtml(item.category)}</span>
+                        <span class="auto-assign-status-badge ${statusBadgeClass}">${statusBadgeText}</span>
                     </div>
                 </div>
 
                 <div class="auto-assign-orig-wrapper">
-                    <div class="auto-assign-orig-file">
+                    <div class="auto-assign-orig-file ${origClass}">
                         <div class="auto-assign-orig-file-text">
-                            <span>❌ 워크플로우 원본:</span> ${escapeHtml(item.currentValue)}
+                            <span>${origLabel}</span> ${escapeHtml(item.currentValue)}
                         </div>
                         <div class="auto-assign-search-group">
                             <a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="auto-assign-search-btn google" title="구글에서 스마트 검색">
@@ -471,7 +792,7 @@ class AutoModelAssigner {
 
                 <div>
                     <div class="auto-assign-recs-title">
-                        <span>💡 추천 후보 (유사도 순)</span>
+                        <span>${recsTitleText}</span>
                     </div>
                     <div class="auto-assign-recs-list" id="recs-${index}">
                         ${recsListHtml}
@@ -479,36 +800,162 @@ class AutoModelAssigner {
                     </div>
                 </div>
 
-                <div class="auto-assign-select-wrapper">
-                    <label>📂 내 PC 모델 직접 선택 또는 건너뛰기:</label>
-                    <select class="auto-assign-select" id="select-${index}">
-                        ${optionsHtml}
-                    </select>
+                <!-- 🌲 윈도우 탐색기 스타일 폴더 트리 탐색기 -->
+                <div class="auto-assign-tree-section">
+                    <div class="auto-assign-tree-header-row">
+                        <div class="auto-assign-tree-title">
+                            <span class="icon">📁</span>
+                            <span>[${escapeHtml(item.category)}] 보유 모델 폴더 탐색기 (클릭하여 펼침/선택)</span>
+                        </div>
+                        <div class="auto-assign-tree-toolbar">
+                            <div class="auto-assign-tree-search-wrapper">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" class="auto-assign-tree-search-input" placeholder="파일명 / 하위 폴더 검색..." />
+                            </div>
+                            <button type="button" class="auto-assign-tree-btn btn-expand-all">📂 모두 펼치기</button>
+                            <button type="button" class="auto-assign-tree-btn btn-collapse-all">📁 모두 접기</button>
+                        </div>
+                    </div>
+
+                    <div class="auto-assign-tree-container" id="tree-container-${index}">
+                    </div>
+
+                    <div class="auto-assign-selected-bar">
+                        <span class="selected-label">👉 최종 선택된 모델:</span>
+                        <span class="selected-value-display" id="selected-display-${index}">${escapeHtml(item.selectedMatch === SKIP_VALUE ? "⏭️ [적용 안함] 기존 모델 유지" : (item.selectedMatch || "(선택 안됨)"))}</span>
+                    </div>
                 </div>
             `;
 
-            // 이벤트 바인딩 (추천 버튼 클릭 시 드롭다운 동기화)
-            const selectElem = card.querySelector(`#select-${index}`);
+            // 트리 DOM 생성 및 삽입
+            const treeContainer = card.querySelector(`#tree-container-${index}`);
+            const selectedDisplay = card.querySelector(`#selected-display-${index}`);
+            const searchInput = card.querySelector(".auto-assign-tree-search-input");
+            const btnExpandAll = card.querySelector(".btn-expand-all");
+            const btnCollapseAll = card.querySelector(".btn-collapse-all");
+
+            // 모델 트리 구조 생성
+            const treeData = this.buildTreeStructure(item.availableList);
+
+            // 선택 업데이트 공통 핸들러
             const updateSelection = (chosenFile) => {
                 item.selectedMatch = chosenFile;
-                selectElem.value = chosenFile;
 
-                const allBtns = card.querySelectorAll(".auto-assign-rec-btn, .auto-assign-skip-btn");
-                allBtns.forEach(b => {
+                if (chosenFile === SKIP_VALUE) {
+                    selectedDisplay.textContent = "⏭️ [적용 안함] 변경하지 않고 원본 유지";
+                    selectedDisplay.style.color = "#94a3b8";
+                } else {
+                    selectedDisplay.textContent = chosenFile;
+                    selectedDisplay.style.color = "#38bdf8";
+                }
+
+                // 상단 추천 칩 동기화
+                const allRecBtns = card.querySelectorAll(".auto-assign-rec-btn, .auto-assign-skip-btn");
+                allRecBtns.forEach(b => {
                     b.classList.toggle("selected", b.dataset.file === chosenFile);
+                });
+
+                // 트리 내 파일 하이라이트 동기화
+                const allFileRows = treeContainer.querySelectorAll(".tree-file-row");
+                allFileRows.forEach(row => {
+                    const isSel = row.dataset.file === chosenFile;
+                    row.classList.toggle("selected", isSel);
+                    if (isSel) {
+                        // 해당 파일의 상위 부모 폴더들 모두 펼치기
+                        let parent = row.parentElement;
+                        while (parent && parent !== treeContainer) {
+                            if (parent.classList.contains("tree-folder-content")) {
+                                parent.classList.add("expanded");
+                                const prev = parent.previousElementSibling;
+                                if (prev && prev.classList.contains("tree-folder-row")) {
+                                    prev.classList.add("expanded");
+                                    const icon = prev.querySelector(".tree-folder-icon");
+                                    if (icon) icon.textContent = "📂";
+                                }
+                            }
+                            parent = parent.parentElement;
+                        }
+                        // 스크롤 포커스 (중앙 정렬)
+                        row.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+                    }
                 });
 
                 card.classList.toggle("skipped", chosenFile === SKIP_VALUE);
             };
 
-            selectElem.addEventListener("change", (e) => {
-                updateSelection(e.target.value);
+            // 트리 DOM 렌더링
+            const treeFragment = this.renderTreeDOM(treeData, item.selectedMatch, (clickedFile) => {
+                updateSelection(clickedFile);
             });
+            treeContainer.appendChild(treeFragment);
 
-            const allBtns = card.querySelectorAll(".auto-assign-rec-btn, .auto-assign-skip-btn");
-            allBtns.forEach(btn => {
+            // 상단 추천 버튼 이벤트 연결
+            const allRecBtns = card.querySelectorAll(".auto-assign-rec-btn, .auto-assign-skip-btn");
+            allRecBtns.forEach(btn => {
                 btn.addEventListener("click", () => {
                     updateSelection(btn.dataset.file);
+                });
+            });
+
+            // 모두 펼치기 버튼
+            btnExpandAll.addEventListener("click", () => {
+                treeContainer.querySelectorAll(".tree-folder-row").forEach(r => {
+                    r.classList.add("expanded");
+                    const icon = r.querySelector(".tree-folder-icon");
+                    if (icon) icon.textContent = "📂";
+                });
+                treeContainer.querySelectorAll(".tree-folder-content").forEach(c => c.classList.add("expanded"));
+            });
+
+            // 모두 접기 버튼
+            btnCollapseAll.addEventListener("click", () => {
+                treeContainer.querySelectorAll(".tree-folder-row").forEach(r => {
+                    r.classList.remove("expanded");
+                    const icon = r.querySelector(".tree-folder-icon");
+                    if (icon) icon.textContent = "📁";
+                });
+                treeContainer.querySelectorAll(".tree-folder-content").forEach(c => c.classList.remove("expanded"));
+            });
+
+            // 실시간 파일/폴더 검색 필터링
+            searchInput.addEventListener("input", (e) => {
+                const query = (e.target.value || "").trim().toLowerCase();
+                const allWrappers = treeContainer.querySelectorAll(".tree-folder-wrapper");
+                const allFiles = treeContainer.querySelectorAll(".tree-file-row");
+
+                if (!query) {
+                    // 검색어 비움: 모든 항목 표시
+                    allFiles.forEach(f => f.style.display = "flex");
+                    allWrappers.forEach(w => w.style.display = "block");
+                    return;
+                }
+
+                // 파일 검색
+                allFiles.forEach(fileRow => {
+                    const match = fileRow.dataset.search.includes(query);
+                    fileRow.style.display = match ? "flex" : "none";
+                    if (match) {
+                        // 일치하는 파일의 상위 폴더는 펼치기
+                        let parent = fileRow.parentElement;
+                        while (parent && parent !== treeContainer) {
+                            if (parent.classList.contains("tree-folder-content")) {
+                                parent.classList.add("expanded");
+                                const prev = parent.previousElementSibling;
+                                if (prev && prev.classList.contains("tree-folder-row")) {
+                                    prev.classList.add("expanded");
+                                    const icon = prev.querySelector(".tree-folder-icon");
+                                    if (icon) icon.textContent = "📂";
+                                }
+                            }
+                            parent = parent.parentElement;
+                        }
+                    }
+                });
+
+                // 폴더 내에 보이는 파일이 있는지 확인하여 빈 폴더 숨기기
+                allWrappers.forEach(wrapper => {
+                    const visibleChildren = wrapper.querySelectorAll(".tree-file-row:not([style*='display: none'])");
+                    wrapper.style.display = visibleChildren.length > 0 ? "block" : "none";
                 });
             });
 
@@ -527,8 +974,8 @@ class AutoModelAssigner {
                 <span>※ 건너뛴 노드는 기존 모델명이 그대로 유지됩니다.</span>
             </div>
             <div class="auto-assign-footer-right">
-                <button class="auto-assign-btn auto-assign-btn-secondary" id="btn-cancel">취소</button>
-                <button class="auto-assign-btn auto-assign-btn-primary" id="btn-apply">⚡ 선택한 모델 일괄 장착</button>
+                <button class="auto-assign-btn auto-assign-btn-secondary" id="btn-cancel">닫기</button>
+                <button class="auto-assign-btn auto-assign-btn-primary" id="btn-apply">⚡ 선택한 모델 장착 / 확인</button>
             </div>
         `;
 
@@ -540,15 +987,21 @@ class AutoModelAssigner {
 
             for (const item of items) {
                 if (item.selectedMatch && item.selectedMatch !== SKIP_VALUE) {
-                    const oldValue = item.widget.value;
-                    item.widget.value = item.selectedMatch;
-                    if (item.widget.callback) {
-                        item.widget.callback(item.selectedMatch, app.canvas, item.node, app.canvas.graph_mouse, {});
+                    if (typeof item.applyValue === "function") {
+                        item.applyValue(item.selectedMatch);
+                    } else if (item.widget) {
+                        const oldValue = item.widget.value;
+                        item.widget.value = item.selectedMatch;
+                        if (item.widget.callback) {
+                            item.widget.callback(item.selectedMatch, app.canvas, item.node, app.canvas.graph_mouse, {});
+                        }
+                        if (item.node.onWidgetChanged) {
+                            item.node.onWidgetChanged(item.widget.name, item.selectedMatch, oldValue, item.widget);
+                        }
                     }
-                    if (item.node.onWidgetChanged) {
-                        item.node.onWidgetChanged(item.widget.name, item.selectedMatch, oldValue, item.widget);
+                    if (!modifiedNodes.includes(item.node)) {
+                        modifiedNodes.push(item.node);
                     }
-                    modifiedNodes.push(item.node);
                     appliedCount++;
                 } else {
                     skippedCount++;
@@ -563,11 +1016,11 @@ class AutoModelAssigner {
             overlay.remove();
 
             if (appliedCount > 0 && skippedCount > 0) {
-                this.showToast(`🎉 ${appliedCount}개 모델 장착 완료 (⏭️ ${skippedCount}개 건너뜀)`, "success");
+                this.showToast(`🎉 ${appliedCount}개 모델/LoRA 슬롯 장착 완료 (⏭️ ${skippedCount}개 건너뜀)`, "success");
             } else if (appliedCount > 0) {
-                this.showToast(`🎉 ${appliedCount}개 노드에 모델이 성공적으로 장착되었습니다!`, "success");
+                this.showToast(`🎉 ${appliedCount}개 모델/LoRA 슬롯 장착 및 확인 완료!`, "success");
             } else {
-                this.showToast(`⏭️ ${skippedCount}개 노드의 모델 변경을 건너뛰었습니다.`, "info");
+                this.showToast(`⏭️ ${skippedCount}개 슬롯의 모델 변경을 건너뛰었습니다.`, "info");
             }
         };
 
@@ -578,7 +1031,18 @@ class AutoModelAssigner {
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
-        requestAnimationFrame(() => overlay.classList.add("visible"));
+        requestAnimationFrame(() => {
+            overlay.classList.add("visible");
+            // 🌟 모달이 화면에 열리는 즉시 각 트리의 선택된 파일이 중앙에 보이도록 자동 스크롤
+            setTimeout(() => {
+                overlay.querySelectorAll(".auto-assign-tree-container").forEach(container => {
+                    const selectedRow = container.querySelector(".tree-file-row.selected");
+                    if (selectedRow) {
+                        selectedRow.scrollIntoView({ block: "center", inline: "nearest" });
+                    }
+                });
+            }, 80);
+        });
     }
 
     /**
