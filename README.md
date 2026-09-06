@@ -55,14 +55,33 @@
 
 ---
 
-## 📂 지원 모델 및 노드 유형
+## 📂 지원하는 모델 및 노드 종류 (Supported Model Types)
 
-* **체크포인트 (Checkpoints)**: `Load Checkpoint`, `CheckpointLoaderSimple` 등 (`ckpt_name`)
-* **확산 모델 (Diffusion Models / UNET)**: `Load Diffusion Model`, `UNETLoader` 등 (`unet_name`)
-* **CLIP / 텍스트 인코더 (CLIP)**: `Load CLIP`, `CLIPLoader`, `DualCLIPLoader` 등 (`clip_name`)
-* **VAE**: `Load VAE`, `VAELoader` 등 (`vae_name`)
-* **LoRA**: `LoraLoader`, `LoraLoaderModelOnly` 등 (`lora_name`)
-* **ControlNet / Upscale 모델**: `ControlNetLoader`, `UpscaleModelLoader` 등
+워크플로우 로드 시 모델 파일이 누락되어 위젯이 비어있거나 빨간 테두리 에러가 발생하는 모든 주요 모델 및 서드파티 노드를 폭넓게 지원합니다.
+
+| 카테고리 | 지원 대상 및 대표 노드 예시 | 주요 파일 확장자 |
+| :--- | :--- | :--- |
+| **체크포인트 (Checkpoints)** | `Load Checkpoint`, `CheckpointLoaderSimple` 등 (SD 1.5, SDXL, Flux, SD3, Illustrious 등) | `.safetensors`, `.ckpt` |
+| **디퓨전/UNET 모델** | `UNETLoader`, `Load Diffusion Model` (Flux UNET, Wan 2.1, Hunyuan, CogVideo 등) | `.safetensors`, `.pt` |
+| **LoRA (로라)** | `LoraLoader`, `LoraLoaderModelOnly`, 각종 다중 LoRA 노드 (LyCORIS, LoCon 포함) | `.safetensors` |
+| **업스케일 모델 (Upscale)** | `UpscaleModelLoader`, `Load Upscale Model` (4x-UltraSharp, NMKD, DAT, RealESRGAN 등) | `.pth`, `.pt`, `.safetensors` |
+| **VAE** | `VAELoader`, `Load VAE` (sdxl_vae, vae-ft-mse 등) | `.safetensors`, `.pt` |
+| **CLIP / 텍스트 인코더** | `CLIPLoader`, `DualCLIPLoader`, `TripleCLIPLoader`, `Load CLIP` (t5xxl, clip-l, clip-g 등) | `.safetensors`, `.bin` |
+| **ControlNet** | `ControlNetLoader`, `DiffControlNetLoader` | `.safetensors`, `.pth` |
+| **기타 특수 모델** | `Clip Vision` (IP-Adapter용), `Style Models`, `PhotoMaker`, `GLIGEN`, `Embeddings` 등 | `.safetensors`, `.bin`, `.pt` |
+
+> 💡 **서드파티 커스텀 노드 99% 호환**: 기본 노드뿐만 아니라 드롭다운 콤보 위젯 내 모델 파일 확장자(`.safetensors`, `.ckpt`, `.pt`, `.bin`, `.pth`)를 자동 감지하므로 다양한 커스텀 노드 팩의 모델 로더도 문제없이 지원합니다.
+
+---
+
+### ⚠️ 에러 유형 안내 (Missing Model vs Missing Node)
+
+* ⭕ **[본 확장 노드로 완벽 해결] 모델 파일 누락 (Missing Models)**
+  - 노드는 화면에 표시되지만 모델 선택 칸이 비어있거나 빨간 테두리가 둘러진 경우
+  - 👉 빈 공간 우클릭 `⚡ 전체 모델/LoRA 자동 장착`으로 1초 만에 내 PC의 파일로 연결하거나 원클릭 다운로드 링크로 해결할 수 있습니다.
+* ❌ **[ComfyUI Manager 필요] 노드 패키지 미설치 (Missing Custom Nodes)**
+  - 노드 자체가 화면에서 회색/빨간 빗금으로 변하고 `UNKNOWN (Missing Node)`로 뜨는 경우
+  - 👉 노드 프로그램 자체가 설치되지 않은 것이므로, **ComfyUI Manager ➔ Install Missing Custom Nodes**를 통해 노드를 먼저 설치한 후 사용해 주세요.
 
 ---
 
